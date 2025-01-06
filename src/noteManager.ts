@@ -63,13 +63,13 @@ export class NoteManager {
         return 'The note is empty or contains only a header.';
       }
 
-      const header = lines[0].split(',');
+      const header = lines[0].split(';');
       const tableHeader = `| ${header.join(' | ')} |\n| ${header.map(() => '---').join(' | ')} |\n`;
       
       let tableContent = tableHeader;
       
       for (let i = 1; i < lines.length; i++) {
-        const fields = lines[i].split(',').map(field => field.trim());
+        const fields = lines[i].split(';').map(field => field.trim());
         // Add empty fields if there are missing ones
         while (fields.length < header.length) {
           fields.push('');
@@ -102,8 +102,8 @@ export function convertMarkdownTableToCSV(markdownTable: string): string | null 
     // Trim each cell and wrap in quotes if it contains a comma
     return cells.map(cell => {
       const trimmed = cell.trim();
-      return trimmed.includes(',') ? `"${trimmed}"` : trimmed;
-    }).join(',');
+      return trimmed.includes(';') ? `"${trimmed}"` : trimmed;
+    }).join(';');
   });
 
   return csvLines.join('\n');

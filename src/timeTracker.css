@@ -104,12 +104,13 @@ body {
 }
 
 .running-task-title {
-    font-weight: bold;
+    margin-bottom: 5px;
 }
 
 .running-task-project {
-    font-size: calc(var(--joplin-font-size) * 0.9);
-    color: var(--joplin-color-faded);
+    font-weight: bold;
+    font-size: calc(var(--joplin-font-size) * 1.2);
+    margin-bottom: 5px;
 }
 
 .running-task-info {
@@ -126,6 +127,10 @@ body {
 .running-task-duration {
     flex: 1;
     text-align: right;
+}
+
+.running-task-actors {
+    color: var(--joplin-color-faded);
 }
 
 ::-webkit-scrollbar {

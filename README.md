@@ -2,6 +2,20 @@
 
 Time Slip is a [Joplin](https://joplinapp.org/) plugin that allows you to track the time you spend on tasks.
 
+
+## Fork modifications
+
+Original project: [alondmnt/joplin-plugin-time-slip](https://github.com/alondmnt/joplin-plugin-time-slip)
+
+Personal customizations in this fork:
+- New Field `Actors`. I need it to keep track of any people involved in the task;
+- CSV field separator changed to `;` since I often find myself writing `,` in the task field;
+- The field in the first position is always `Project` and no longer `Task` both in UI and in output summary;
+- `Task` field converted from `input text` to `textarea` because I use that field as a detailed description of the task;
+- Rearranged UI elements based on my needs
+
+![new-ui](./img/new-ui.png)
+
 ## Features
 
 - Run multiple concurrent timers and manage multiple time logs

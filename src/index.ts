@@ -28,7 +28,7 @@ joplin.plugins.register({
         </div>
         <div class="input-group">
         <input type="text" id="projectName" placeholder="Project name">
-        <input type="text" id="taskName" placeholder="Task name">
+        <textarea id="taskName" placeholder="Task name"></textarea>
         <input type="text" id="actorsName" placeholder="Actors name">
         <button id="startButton">Start</button>
         </div>

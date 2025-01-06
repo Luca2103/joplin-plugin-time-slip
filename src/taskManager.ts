@@ -42,7 +42,7 @@ export class TaskManager {
   private currentEndDate: string | null = null;
   private logNoteTag: string = 'time-slip';
   private fieldIndices: FieldIndices | null = null;
-  private defaultHeader = "Project,Task,Actors,Start date,Start time,End date,End time,Duration";
+  private defaultHeader = "Project;Task;Actors;Start date;Start time;End date;End time;Duration";
   private sortBy: 'duration' | 'endTime' | 'name' = 'duration';
   public debouncedScanAndUpdate: ReturnType<typeof debounce>;
   private logSortOrder: 'ascending' | 'descending' = 'ascending';
@@ -77,7 +77,7 @@ export class TaskManager {
   }
 
   private inferFieldIndices(header: string): FieldIndices | null {
-    const fields = header.toLowerCase().split(',').map(field => field.trim());
+    const fields = header.toLowerCase().split(';').map(field => field.trim());
     const indices: Partial<FieldIndices> = {};
 
     indices.project = fields.indexOf('project');
@@ -173,7 +173,7 @@ export class TaskManager {
 
     // Skip the header line
     for (let i = 1; i < lines.length; i++) {
-      const fields = lines[i].split(',').map(field => field.trim());
+      const fields = lines[i].split(';').map(field => field.trim());
       const project = fields[this.fieldIndices.project];
       const taskName = fields[this.fieldIndices.taskName];
       const actors = fields[this.fieldIndices.actors];
@@ -208,7 +208,7 @@ export class TaskManager {
           if (calculatedDuration !== duration) {
             // Update the line with the correct duration
             fields[this.fieldIndices.duration] = calculatedDuration;
-            lines[i] = fields.join(',');
+            lines[i] = fields.join(';');
             durationChanged = true;
           }
 
@@ -458,11 +458,11 @@ export class TaskManager {
       newEntry[this.fieldIndices.startDate] = formatDate(startTime);
       newEntry[this.fieldIndices.startTime] = formatTime(startTime);
       if (this.logSortOrder === 'ascending') {
-        updatedBody += '\n' + newEntry.join(',');
+        updatedBody += '\n' + newEntry.join(';');
 
       } else {
         updatedBody = updatedBody.split('\n');
-        updatedBody.splice(1, 0, newEntry.join(','));
+        updatedBody.splice(1, 0, newEntry.join(';'));
         updatedBody = updatedBody.join('\n');
       }
 
@@ -501,7 +501,7 @@ export class TaskManager {
     
     // Find the last matching open task entry
     const lineIndex = lines.findIndex(line => {
-      const fields = line.split(',');
+      const fields = line.split(';');
       return fields[this.fieldIndices.project] === project &&
              fields[this.fieldIndices.taskName] === taskName && 
              fields[this.fieldIndices.actors] === actors && 
@@ -512,11 +512,11 @@ export class TaskManager {
     });
 
     if (lineIndex !== -1) {
-      const fields = lines[lineIndex].split(',');
+      const fields = lines[lineIndex].split(';');
       fields[this.fieldIndices.endDate] = formatDate(endTime);
       fields[this.fieldIndices.endTime] = formatTime(endTime);
       fields[this.fieldIndices.duration] = formatDuration(duration);
-      lines[lineIndex] = fields.join(',');
+      lines[lineIndex] = fields.join(';');
       const updatedBody = lines.join('\n');
       await this.noteManager.updateNote(updatedBody);
 

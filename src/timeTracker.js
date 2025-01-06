@@ -1,5 +1,5 @@
-const taskNameInput = document.getElementById('taskName');
 const projectNameInput = document.getElementById('projectName');
+const taskNameInput = document.getElementById('taskName');
 const actorsNameInput = document.getElementById('actorsName');
 const startButton = document.getElementById('startButton');
 const runningTasksDiv = document.getElementById('runningTasks');
@@ -219,7 +219,7 @@ function openSelectedNote() {
 }
 
 function convertCsvToMarkdown(csv) {
-  const rows = csv.trim().split('\n').map(row => row.split(','));
+  const rows = csv.trim().split('\n').map(row => row.split(';'));
   const headers = rows[0];
   const body = rows.slice(1);
 
@@ -439,7 +439,7 @@ function updateCompletedTasksDisplay() {
     aggregatedTasks.forEach(({ name, duration, originalProject, originalTask, originalActors, endTime }) => {
       const formattedDuration = formatDuration(Math.floor(duration / 1000));
       const formattedEndTime = formatDateTime(new Date(endTime));
-      const csvFormattedEndTime = formattedEndTime.replace('<br>', ',');
+      const csvFormattedEndTime = formattedEndTime.replace('<br>', ';');
       
       if (currentAggregationLevel === 1) {
         csvContent += `${originalProject},${originalTask},${formattedDuration},${csvFormattedEndTime}\n`;
