@@ -14,18 +14,29 @@ joplin.plugins.register({
 
     await joplin.views.panels.setHtml(panel, `
       <div id="timeTracker">
-        <div class="input-group">
-          <input type="text" id="taskName" placeholder="Task name">
-          <input type="text" id="projectName" placeholder="Project name">
-          <button id="startButton">Start</button>
-        </div>
         <div class="note-selector-group">
-          <select id="noteSelector">
-            <option value="">To start, tag a new note with a time-slip tag</option>
-          </select>
+        <select id="noteSelector">
+        <option value="">To start, tag a new note with a time-slip tag</option>
+        </select>
           <button id="openNoteButton" title="Open selected note">Open</button>
         </div>
         <div id="errorMessage"></div>
+        <div class="section-divider">
+          <hr>
+          <span>New Task</span>
+          <hr>
+        </div>
+        <div class="input-group">
+        <input type="text" id="projectName" placeholder="Project name">
+        <input type="text" id="taskName" placeholder="Task name">
+        <input type="text" id="actorsName" placeholder="Actors name">
+        <button id="startButton">Start</button>
+        </div>
+        <div class="section-divider">
+          <hr>
+          <span>Running Tasks</span>
+          <hr>
+        </div>
         <div id="runningTasks"></div>
         <div class="section-divider">
           <hr>
@@ -218,7 +229,7 @@ joplin.plugins.register({
 
       } else if (message.name === 'start') {
         if (noteId) {
-          await taskManager.startTask(message.taskName, message.projectName);
+          await taskManager.startTask(message.projectName, message.taskName, message.actorsName);
         } else {
           await joplin.views.panels.postMessage(panel, { 
             name: 'error', 
@@ -228,7 +239,7 @@ joplin.plugins.register({
 
       } else if (message.name === 'stop') {
         if (noteId) {
-          await taskManager.stopTask(message.taskName, message.projectName);
+          await taskManager.stopTask(message.projectName, message.taskName, message.actorsName);
         } else {
           console.error('No note selected. Cannot stop task.');
         }

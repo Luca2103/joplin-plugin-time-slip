@@ -1,5 +1,6 @@
 const taskNameInput = document.getElementById('taskName');
 const projectNameInput = document.getElementById('projectName');
+const actorsNameInput = document.getElementById('actorsName');
 const startButton = document.getElementById('startButton');
 const runningTasksDiv = document.getElementById('runningTasks');
 const errorMessageDiv = document.getElementById('errorMessage');
@@ -16,6 +17,7 @@ let tasks = {};
 let completedTasks = [];
 let uniqueTasks = [];
 let uniqueProjects = [];
+let uniqueActors = [];
 let lastStartDate = '';
 let lastEndDate = '';
 
@@ -66,17 +68,18 @@ function updateRunningTasksDisplay() {
   
   try {
     tasksHtml = Object.entries(tasks).map(([key, { startTime, project }]) => {
-      const [taskName, projectName] = key.split('|');
+      const [projectName, taskName, actorsName] = key.split('|');
       const durationSeconds = Math.floor((now - startTime) / 1000);
       const formattedDuration = formatDuration(durationSeconds);
       const formattedStartTime = formatStartTime(startTime);
       return `<div class="running-task">
         <div class="running-task-header">
           <div class="running-task-title-container">
+          <span class="running-task-project">${projectName}</span>
             <span class="running-task-title">${taskName}</span>
-            <span class="running-task-project">${projectName}</span>
+            <span class="running-task-actors">${actorsName}</span>
           </div>
-          <button class="stopButton" data-task="${taskName}" data-project="${projectName}">Stop</button>
+          <button class="stopButton" data-project="${projectName}" data-task="${taskName}" data-actors="${actorsName}">Stop</button>
         </div>
         <div class="running-task-info">
           <span class="running-task-start-time">${formattedStartTime}</span>
@@ -102,14 +105,17 @@ function updateRunningTasksDisplay() {
 startButton.addEventListener('click', function() {
   const taskName = taskNameInput.value.trim();
   const projectName = projectNameInput.value.trim();
+  const actorsName = actorsNameInput.value.trim();
   if (taskName && projectName) {
     webviewApi.postMessage({
       name: 'start',
+      projectName: projectName,
       taskName: taskName,
-      projectName: projectName
+      actorsName: actorsName
     });
-    taskNameInput.value = '';
     projectNameInput.value = '';
+    taskNameInput.value = '';
+    actorsNameInput.value = '';
 
   } else {
     console.log('Task name or project name is empty, not sending message');
@@ -119,14 +125,16 @@ startButton.addEventListener('click', function() {
 // Use event delegation for stop buttons in runningTasksDiv
 runningTasksDiv.addEventListener('click', function(event) {
   if (event.target.classList.contains('stopButton')) {
-    const taskName = event.target.getAttribute('data-task');
     const projectName = event.target.getAttribute('data-project');
+    const taskName = event.target.getAttribute('data-task');
+    const actorsName = event.target.getAttribute('data-actors');
     webviewApi.postMessage({
       name: 'stop',
+      projectName: projectName,
       taskName: taskName,
-      projectName: projectName
+      actorsName: actorsName
     });
-    delete tasks[`${taskName}|${projectName}`];
+    delete tasks[`${projectName}|${taskName}|${actorsName}`];
     updateRunningTasksDisplay();
   }
 });
@@ -134,12 +142,14 @@ runningTasksDiv.addEventListener('click', function(event) {
 // Use event delegation for start buttons in completedTasksDiv
 document.getElementById('completedTasks').addEventListener('click', function(event) {
   if (event.target.classList.contains('startButton')) {
-    const taskName = event.target.getAttribute('data-task');
     const projectName = event.target.getAttribute('data-project');
+    const taskName = event.target.getAttribute('data-task');
+    const actorsName = event.target.getAttribute('data-actors');
     webviewApi.postMessage({
       name: 'start',
+      projectName: projectName,
       taskName: taskName,
-      projectName: projectName
+      actorsName: actorsName
     });
   }
 });
@@ -234,8 +244,9 @@ webviewApi.onMessage(function(event) {
     updateCompletedTasksDisplay();
 
   } else if (message.name === 'updateAutocompleteLists') {
-    uniqueTasks = message.tasks || [];
     uniqueProjects = message.projects || [];
+    uniqueTasks = message.tasks || [];
+    uniqueActors = message.actors || [];
     updateAutocompleteLists();
 
   } else if (message.name === 'error') {
@@ -246,8 +257,9 @@ webviewApi.onMessage(function(event) {
     // Handle initial data
     tasks = message.runningTasks || {};
     completedTasks = message.completedTasks || [];
-    uniqueTasks = message.uniqueTasks || [];
     uniqueProjects = message.uniqueProjects || [];
+    uniqueTasks = message.uniqueTasks || [];
+    uniqueActors = message.uniqueActors || [];
     updateRunningTasksDisplay();
     updateCompletedTasksDisplay();
     updateAutocompleteLists();
@@ -314,8 +326,9 @@ function aggregateTasks(tasks, level) {
       name: task.taskName,
       duration: task.duration,
       endTime: task.endTime,
+      originalProject: task.project,
       originalTask: task.taskName,
-      originalProject: task.project
+      originalActors: task.actors
     }));
   }
 
@@ -334,8 +347,9 @@ function aggregateTasks(tasks, level) {
     name: item.name,
     duration: item.duration,
     endTime: item.endTime,
+    originalProject: item.tasks[0].project,
     originalTask: item.tasks[0].taskName,
-    originalProject: item.tasks[0].project
+    originalActors: item.tasks[0].actors
   }));
 }
 
@@ -347,8 +361,9 @@ function updateCompletedTasksDisplay() {
 
   if (completedTasks.length > 0) {
     const filteredTasks = completedTasks.filter(task => 
+      task.project.toLowerCase().includes(currentFilter.toLowerCase()) ||
       task.taskName.toLowerCase().includes(currentFilter.toLowerCase()) || 
-      task.project.toLowerCase().includes(currentFilter.toLowerCase())
+      task.actors.toLowerCase().includes(currentFilter.toLowerCase())
     );
     let aggregatedTasks = aggregateTasks(filteredTasks, currentAggregationLevel);
     
@@ -359,10 +374,10 @@ function updateCompletedTasksDisplay() {
       } else if (currentSortBy === 'endTime') {
         return b.endTime - a.endTime;
       } else if (currentSortBy === 'name') {
-        const aName = currentAggregationLevel === 1 ? a.originalProject + ' ' + a.originalTask :
+        const aName = currentAggregationLevel === 1 ? a.originalProject + ' ' + a.originalTask + ' ' + a.originalActors :
                       currentAggregationLevel === 2 ? a.name :
                       selectedNoteName || '';
-        const bName = currentAggregationLevel === 1 ? b.originalProject + ' ' + b.originalTask :
+        const bName = currentAggregationLevel === 1 ? b.originalProject + ' ' + b.originalTask + ' ' + b.originalActors :
                       currentAggregationLevel === 2 ? b.name :
                       selectedNoteName || '';
         return aName.localeCompare(bName);
@@ -378,6 +393,7 @@ function updateCompletedTasksDisplay() {
     let headerDuration = 'Duration';
     let headerTime = 'End Time';
     let headerProject = 'Project';
+    let headerActors = 'Actors';
     let headerTask = 'Task';
     if (currentSortBy === 'duration') {
       headerDuration += '<span class="arrow-up"></span>';
@@ -386,13 +402,15 @@ function updateCompletedTasksDisplay() {
     } else if (currentSortBy === 'name') {
       headerProject += '<span class="arrow-down"></span>';
       headerTask += '<span class="arrow-down"></span>';
+      headerActors += '<span class="arrow-down"></span>';
     }
 
     if (currentAggregationLevel === 1) {
-      csvContent = 'Task,Project,Duration,End date,End time\n';
+      csvContent = 'Project,Task,Duration,End date,End time\n';
       tasksHtml += `<tr>
-        <th class="header-cell sortable" data-sort="name">${headerTask}</th>
         <th class="header-cell sortable" data-sort="name">${headerProject}</th>
+        <th class="header-cell sortable" data-sort="name">${headerTask}</th>
+        <th class="header-cell sortable" data-sort="name">${headerActors}</th>
         ${showBothColumns ? 
           `<th class="header-cell sortable" data-sort="duration">${headerDuration}</th>
            <th class="header-cell sortable" data-sort="endTime">${headerTime}</th>` :
@@ -418,16 +436,17 @@ function updateCompletedTasksDisplay() {
       </tr>`;
     }
 
-    aggregatedTasks.forEach(({ name, duration, originalTask, originalProject, endTime }) => {
+    aggregatedTasks.forEach(({ name, duration, originalProject, originalTask, originalActors, endTime }) => {
       const formattedDuration = formatDuration(Math.floor(duration / 1000));
       const formattedEndTime = formatDateTime(new Date(endTime));
       const csvFormattedEndTime = formattedEndTime.replace('<br>', ',');
       
       if (currentAggregationLevel === 1) {
-        csvContent += `${originalTask},${originalProject},${formattedDuration},${csvFormattedEndTime}\n`;
+        csvContent += `${originalProject},${originalTask},${formattedDuration},${csvFormattedEndTime}\n`;
         tasksHtml += `<tr>
-          <td>${originalTask}</td>
           <td>${originalProject}</td>
+          <td>${originalTask}</td>
+          <td>${originalActors}</td>
           ${showBothColumns ?
             `<td style="word-wrap: break-word">${formattedDuration}</td>
              <td style="word-wrap: break-word">${formattedEndTime}</td>` :
@@ -435,7 +454,7 @@ function updateCompletedTasksDisplay() {
                ${currentSortBy === 'endTime' ? formattedEndTime : formattedDuration}
              </td>`
           }
-          <td style="word-wrap: break-word"><button class="startButton" data-task="${originalTask}" data-project="${originalProject}">Start</button></td>
+          <td style="word-wrap: break-word"><button class="startButton" data-task="${originalTask}" data-project="${originalProject}" data-actors="${originalActors}">Start</button></td>
         </tr>`;
       } else if (currentAggregationLevel === 2) {
         csvContent += `${name},${formattedDuration},${csvFormattedEndTime}\n`;
@@ -715,9 +734,18 @@ const projectAutocomplete = createAutocomplete(
   }
 );
 
+const actorsAutocomplete = createAutocomplete(
+  actorsNameInput,
+  () => uniqueActors,
+  (selectedActor) => {
+    startButton.click();
+  }
+);
+
 function updateAutocompleteLists() {
   taskAutocomplete.updateItems();
   projectAutocomplete.updateItems();
+  actorsAutocomplete.updateItems();
 }
 
 function formatDateTime(date) {
@@ -751,6 +779,12 @@ taskNameInput.addEventListener('keydown', (event) => {
 projectNameInput.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     handleEscapeKey(projectNameInput);
+  }
+});
+
+actorsNameInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    handleEscapeKey(actorsNameInput);
   }
 });
 

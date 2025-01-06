@@ -6,6 +6,7 @@ import debounce = require('lodash.debounce');
 interface FieldIndices {
   project: number;
   taskName: number;
+  actors: number;
   startDate: number;
   startTime: number;
   endDate: number;
@@ -15,9 +16,10 @@ interface FieldIndices {
 
 interface ScanResult {
   openTasks: { [key: string]: { startTime: number; project: string } };
-  completedTasks: { [key: string]: { taskName: string; project: string; duration: number; startTime: number; endTime: number } };
-  tasksSet: Set<string>;
+  completedTasks: { [key: string]: { project: string; taskName: string; actors: string ; duration: number; startTime: number; endTime: number } };
   projectsSet: Set<string>;
+  tasksSet: Set<string>;
+  actorsSet: Set<string>;
   sortableTasks: Array<{ index: number; startTime: number; line: string }>;
   unknownTasks: Array<{ index: number, line: string }>;
   durationChanged: boolean;
@@ -33,13 +35,14 @@ export class TaskManager {
   private noteManager: NoteManager;
   private uniqueTasks: string[] = [];
   private uniqueProjects: string[] = [];
-  private completedTasks: { taskName: string; project: string; duration: number; endTime: number }[] = [];
+  private uniqueActors: string[] = [];
+  private completedTasks: { project: string; taskName: string; actors: string;  duration: number; endTime: number }[] = [];
   private logNotes: { id: string; title: string }[] = [];
   private currentStartDate: string | null = null;
   private currentEndDate: string | null = null;
   private logNoteTag: string = 'time-slip';
   private fieldIndices: FieldIndices | null = null;
-  private defaultHeader = "Project,Task,Start date,Start time,End date,End time,Duration";
+  private defaultHeader = "Project,Task,Actors,Start date,Start time,End date,End time,Duration";
   private sortBy: 'duration' | 'endTime' | 'name' = 'duration';
   public debouncedScanAndUpdate: ReturnType<typeof debounce>;
   private logSortOrder: 'ascending' | 'descending' = 'ascending';
@@ -56,8 +59,8 @@ export class TaskManager {
     this.updateEnforceSorting();
   }
 
-  private getTaskKey(taskName: string, project: string): string {
-    return `${taskName}|${project}`;
+  private getTaskKey(project: string, taskName: string, actors: string): string {
+    return `${project}|${taskName}|${actors}`;
   }
 
   async initialize() {
@@ -79,6 +82,7 @@ export class TaskManager {
 
     indices.project = fields.indexOf('project');
     indices.taskName = fields.indexOf('task');
+    indices.actors = fields.indexOf('actors');
     indices.startDate = fields.indexOf('start date');
     indices.startTime = fields.indexOf('start time');
     indices.endDate = fields.indexOf('end date');
@@ -151,9 +155,10 @@ export class TaskManager {
 
   private processNoteLines(lines: string[]): ScanResult {
     const openTasks: { [key: string]: { startTime: number; project: string } } = {};
-    const completedTasks: { [key: string]: { taskName: string; project: string; duration: number; startTime: number; endTime: number } } = {};
-    const tasksSet = new Set<string>();
+    const completedTasks: { [key: string]: { project: string; taskName: string; actors: string; duration: number; startTime: number; endTime: number } } = {};
     const projectsSet = new Set<string>();
+    const tasksSet = new Set<string>();
+    const actorsSet = new Set<string>();
     const sortableTasks: Array<{ index: number; startTime: number; line: string }> = [];
     const unknownTasks: Array<{ index: number, line: string }> = [];
     let durationChanged = false;
@@ -171,14 +176,16 @@ export class TaskManager {
       const fields = lines[i].split(',').map(field => field.trim());
       const project = fields[this.fieldIndices.project];
       const taskName = fields[this.fieldIndices.taskName];
+      const actors = fields[this.fieldIndices.actors];
       const startDateStr = fields[this.fieldIndices.startDate];
       const startTimeStr = fields[this.fieldIndices.startTime];
       const endDateStr = fields[this.fieldIndices.endDate];
       const endTimeStr = fields[this.fieldIndices.endTime];
       const duration = fields[this.fieldIndices.duration];
       
-      if (taskName) tasksSet.add(taskName);
       if (project) projectsSet.add(project);
+      if (taskName) tasksSet.add(taskName);
+      if (actors) actorsSet.add(actors);
 
       if (startTimeStr) {
         const startDateTime = new Date(`${startDateStr} ${startTimeStr}`);
@@ -206,7 +213,7 @@ export class TaskManager {
           }
 
           if (this.isTaskInDateRange(startDateTime, startDate, endDate)) {
-            const taskKey = this.getTaskKey(taskName, project);
+            const taskKey = this.getTaskKey(project, taskName, actors);
             if (taskKey in completedTasks) {
               completedTasks[taskKey].duration += calculatedDurationMs;
               completedTasks[taskKey].startTime = Math.min(completedTasks[taskKey].startTime, startDateTime.getTime());
@@ -214,8 +221,9 @@ export class TaskManager {
 
             } else {
               completedTasks[taskKey] = {
-                taskName,
                 project,
+                taskName,
+                actors,
                 duration: calculatedDurationMs,
                 startTime: startDateTime.getTime(),
                 endTime: endDateTime.getTime()
@@ -225,7 +233,7 @@ export class TaskManager {
 
         } else {
           // Open task
-          const taskKey = this.getTaskKey(taskName, project);
+          const taskKey = this.getTaskKey(project, taskName, actors);
           openTasks[taskKey] = { startTime: startDateTime.getTime(), project };
         }
 
@@ -240,8 +248,9 @@ export class TaskManager {
     return {
       openTasks,
       completedTasks,
-      tasksSet,
       projectsSet,
+      tasksSet,
+      actorsSet,
       sortableTasks,
       unknownTasks,
       durationChanged,
@@ -254,8 +263,9 @@ export class TaskManager {
     const {
       openTasks,
       completedTasks,
-      tasksSet,
       projectsSet,
+      tasksSet,
+      actorsSet,
       sortableTasks,
       unknownTasks,
       durationChanged,
@@ -275,7 +285,7 @@ export class TaskManager {
     this.tasks = openTasks;
     this.updateRunningTasks();
     this.updateCompletedTasks(Object.values(completedTasks));
-    this.updateAutocompleteLists(Array.from(tasksSet), Array.from(projectsSet));
+    this.updateAutocompleteLists(Array.from(projectsSet), Array.from(tasksSet), Array.from(actorsSet) );
     await this.getLogNotes();
   }
 
@@ -386,22 +396,23 @@ export class TaskManager {
     return this.logNotes;
   }
 
-  private updateAutocompleteLists(uniqueTasks: string[], uniqueProjects: string[]) {
+  private updateAutocompleteLists(uniqueProjects: string[], uniqueTasks: string[], uniqueActors: string[] ) {
     this.joplin.views.panels.postMessage(this.panel, {
       name: 'updateAutocompleteLists',
       tasks: uniqueTasks,
-      projects: uniqueProjects
+      projects: uniqueProjects,
+      actors: uniqueActors
     });
   }
 
-  private updateCompletedTasks(completedTasks: Array<{ taskName: string; project: string; duration: number; endTime: number }>) {
+  private updateCompletedTasks(completedTasks: Array<{ project: string; taskName: string; actors: string; duration: number; endTime: number }>) {
     this.joplin.views.panels.postMessage(this.panel, { 
       name: 'updateCompletedTasks', 
       tasks: completedTasks
     });
   }
 
-  async startTask(taskName: string, project: string) {
+  async startTask(project: string, taskName: string, actors: string) {
     if (!this.noteId) {
       this.joplin.views.panels.postMessage(this.panel, { 
         name: 'error', 
@@ -419,7 +430,7 @@ export class TaskManager {
       return;
     }
 
-    const taskKey = this.getTaskKey(taskName, project);
+    const taskKey = this.getTaskKey(project, taskName, actors);
     if (this.tasks[taskKey]) {
       this.joplin.views.panels.postMessage(this.panel, { 
         name: 'error', 
@@ -443,6 +454,7 @@ export class TaskManager {
       const newEntry = new Array(maxIndex + 1).fill('');
       newEntry[this.fieldIndices.project] = project;
       newEntry[this.fieldIndices.taskName] = taskName;
+      newEntry[this.fieldIndices.actors] = actors;
       newEntry[this.fieldIndices.startDate] = formatDate(startTime);
       newEntry[this.fieldIndices.startTime] = formatTime(startTime);
       if (this.logSortOrder === 'ascending') {
@@ -459,7 +471,7 @@ export class TaskManager {
     }
   }
 
-  async stopTask(taskName: string, project: string) {
+  async stopTask(project: string, taskName: string, actors: string) {
     if (!this.noteId) {
       console.error('No note selected. Cannot stop task.');
       return;
@@ -470,7 +482,7 @@ export class TaskManager {
       return;
     }
 
-    const taskKey = this.getTaskKey(taskName, project);
+    const taskKey = this.getTaskKey(project, taskName, actors);
     if (!this.tasks[taskKey]) {
       console.error(`Task "${taskName}" for project "${project}" not found`);
       return;
@@ -492,6 +504,7 @@ export class TaskManager {
       const fields = line.split(',');
       return fields[this.fieldIndices.project] === project &&
              fields[this.fieldIndices.taskName] === taskName && 
+             fields[this.fieldIndices.actors] === actors && 
              fields[this.fieldIndices.startDate] === startDate &&
              fields[this.fieldIndices.startTime] === startTimeFormatted &&
              !fields[this.fieldIndices.endDate] && // Ensure end date is empty
@@ -534,6 +547,7 @@ export class TaskManager {
       completedTasks: this.completedTasks,
       uniqueTasks: this.uniqueTasks,
       uniqueProjects: this.uniqueProjects,
+      uniqueActors: this.uniqueActors,
       logNotes: await this.getLogNotes(),
       defaultNoteId: this.noteId,
       sortBy: this.sortBy

@@ -2,7 +2,7 @@
     box-sizing: border-box;
 }
 
-#taskName, #projectName, #startButton, #openNoteButton, .running-task, .stopButton, .startButton, #noteSelector, .date-range input[type="date"],
+#taskName, #projectName, #actorsName #startButton, #openNoteButton, .running-task, .stopButton, .startButton, #noteSelector, .date-range input[type="date"],
 .autocomplete-list, #completedTasks table, #completedTasks th, #completedTasks td, #taskFilter {
     border-color: rgb(118, 118, 118);
     font-size: var(--joplin-font-size);
@@ -25,10 +25,14 @@ body {
     gap: 5px;
     margin-bottom: 5px;
     position: relative;
+    flex-direction: column;
 }
 
-#taskName, #projectName {
-    width: 40%;
+.note-selector-group {
+    flex-direction: row;
+}
+
+#taskName, #projectName, #actorsName {
     min-height: 23px;
     color: var(--joplin-color);
     background-color: var(--joplin-background-color);
@@ -36,6 +40,8 @@ body {
     border-radius: 3px;
     border-style: solid;
 }
+
+
 
 #startButton, #openNoteButton, .stopButton {
     width: 20%;
@@ -49,6 +55,10 @@ body {
     border-style: solid;
     font-size: var(--joplin-font-size);
     padding: 3px 8px;
+}
+
+#startButton{
+    width: 100%;
 }
 
 #startButton:hover, #openNoteButton:hover, .stopButton:hover {
@@ -208,7 +218,7 @@ body {
 }
 
 .autocomplete-list {
-    position: absolute;
+    /* position: absolute; */
     border-width: 1px;
     border-style: solid;
     border-top: none;
